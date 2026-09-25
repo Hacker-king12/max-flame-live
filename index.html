@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Max Flame Live</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #080b10;
+      color: white;
+    }
+
+    header {
+      padding: 22px 18px;
+      text-align: center;
+      background: #10151d;
+      border-bottom: 2px solid #ff5a00;
+    }
+
+    header h1 {
+      margin: 0;
+      color: #ff6a00;
+      font-size: 27px;
+    }
+
+    header p {
+      margin: 7px 0 0;
+      color: #999;
+    }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: 25px auto;
+    }
+
+    .login {
+      max-width: 400px;
+      margin: 70px auto;
+      padding: 25px;
+      background: #121821;
+      border: 1px solid #293241;
+      border-radius: 16px;
+    }
+
+    .login h2 {
+      text-align: center;
+      color: #ff6a00;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      margin: 7px 0;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #080b10;
+      color: white;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border: 0;
+      border-radius: 8px;
+      background: #ff6500;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #error {
+      color: #ff5555;
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    #dashboard {
+      display: none;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .topbar button {
+      width: auto;
+      padding: 9px 16px;
+      margin: 0;
+      background: #252c36;
+    }
+
+    .live {
+      color: #40e477;
+      font-weight: bold;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background: #121821;
+      border: 1px solid #293241;
+      border-radius: 15px;
+      padding: 18px;
+    }
+
+    .card.playing {
+      border-color: #ff6500;
+    }
+
+    .card.available {
+      border-color: #22c55e;
+    }
+
+    .station {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 14px;
+    }
+
+    .status.available {
+      background: #123c24;
+      color: #54ef87;
+    }
+
+    .status.playing {
+      background: #4b270e;
+      color: #ff9b55;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 7px 0;
+      border-bottom: 1px solid #202733;
+      font-size: 14px;
+    }
+
+    .label { color: #8d98a8; }
+    .value { text-align: right; }
+
+    .amount {
+      color: #ff8a32;
+      font-weight: bold;
+      font-size: 17px;
+    }
+
+    .updated {
+      color: #667180;
+      font-size: 11px;
+      margin-top: 12px;
+      text-align: right;
+    }
+
+    .empty {
+      text-align: center;
+      color: #888;
+      padding: 50px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>🔥 MAX FLAME LIVE</h1>
+  <p>Gaming Zone • Live Monitoring</p>
+</header>
+
+<div class="container">
+
+  <div id="login" class="login">
+    <h2>Owner Login</h2>
+
+    <input id="email" type="email" placeholder="Supabase Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="login()">LOGIN</button>
+
+    <div id="error"></div>
+  </div>
+
+  <div id="dashboard">
+
+    <div class="topbar">
+      <div>
+        <strong>Station Status</strong>
+        <span class="live">● LIVE</span>
+      </div>
+
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div id="stations" class="grid"></div>
+
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL =
+  "https://pmxbfltnwnnttoxnazjh.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_o4AGn1NIGnzE82NrElk_uw_xZ09O5B5";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function login() {
+
+  document.getElementById("error").textContent = "";
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await sb.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    document.getElementById("error").textContent =
+      "Login failed: " + error.message;
+    return;
+  }
+
+  showDashboard();
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function checkLogin() {
+
+  const { data } = await sb.auth.getSession();
+
+  if (data.session) {
+    showDashboard();
+  }
+}
+
+async function showDashboard() {
+
+  document.getElementById("login").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+
+  await loadStations();
+
+  setInterval(loadStations, 3000);
+}
+
+async function loadStations() {
+
+  const { data, error } = await sb
+    .from("live_status")
+    .select("*")
+    .order("station");
+
+  const area = document.getElementById("stations");
+
+  if (error) {
+    area.innerHTML =
+      '<div class="empty">Unable to load live data.<br>' +
+      error.message + '</div>';
+    return;
+  }
+
+  area.innerHTML = "";
+
+  data.forEach(s => {
+
+    const status = s.status || "Available";
+    const cssStatus = status.toLowerCase();
+
+    const card = document.createElement("div");
+    card.className = "card " + cssStatus;
+
+    card.innerHTML = `
+      <div class="station">${safe(s.station)}</div>
+
+      <div class="status ${cssStatus}">
+        ${safe(status)}
+      </div>
+
+      <div class="row">
+        <span class="label">Customer</span>
+        <span class="value">${safe(s.customer || "-")}</span>
+      </div>
+
+      <div class="row">
+        <span class="label">Mode</span>
+        <span class="value">${safe(s.mode || "-")}</span>
+      </div>
+
+      <div class="row">
+        <span class="label">Controllers</span>
+        <span class="value">${s.controllers || 0}</span>
+      </div>
+
+      <div class="row">
+        <span class="label">Duration</span>
+        <span class="value">${formatDuration(s.duration_seconds)}</span>
+      </div>
+
+      <div class="row">
+        <span class="label">Current Bill</span>
+        <span class="value amount">
+          Rs. ${Number(s.amount || 0).toLocaleString()}
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">Payment</span>
+        <span class="value">${safe(s.payment || "-")}</span>
+      </div>
+
+      <div class="updated">
+        Updated: ${formatDate(s.updated_at)}
+      </div>
+    `;
+
+    area.appendChild(card);
+  });
+}
+
+function formatDuration(seconds) {
+
+  seconds = Number(seconds || 0);
+
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+
+  return (
+    String(h).padStart(2, "0") + ":" +
+    String(m).padStart(2, "0") + ":" +
+    String(s).padStart(2, "0")
+  );
+}
+
+function formatDate(value) {
+
+  if (!value) return "-";
+
+  return new Date(value).toLocaleString();
+}
+
+function safe(value) {
+
+  const div = document.createElement("div");
+  div.textContent = String(value);
+  return div.innerHTML;
+}
+
+checkLogin();
+</script>
+
+</body>
+</html>
