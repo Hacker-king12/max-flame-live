@@ -183,6 +183,15 @@
       color: #888;
       padding: 50px;
     }
+
+    .sales-summary { margin: 0 0 22px; padding: 22px; background: #111821;
+      border: 1px solid #ff6a00; border-radius: 18px; }
+    .sales-summary h2 { margin: 0 0 10px; font-size: 20px; }
+    .sales-summary .sales-total { font-size: clamp(30px, 6vw, 42px);
+      font-weight: bold; color: #ff8a32; margin: 10px 0; }
+    .sales-summary p { color: #aab6c6; margin: 6px 0; line-height: 1.5; }
+    .sales-summary.stale { border-color: #718096; }
+    .sales-summary .sales-note { font-size: 13px; }
   </style>
 </head>
 
@@ -216,6 +225,14 @@
 
       <button onclick="logout()">Logout</button>
     </div>
+
+    <section id="sales-summary" class="sales-summary" aria-labelledby="sales-heading">
+      <h2 id="sales-heading">Today's Total Sales</h2>
+      <div id="sales-total" class="sales-total">—</div>
+      <p id="sales-details">Waiting for desktop sales sync…</p>
+      <p class="sales-note">Saved gaming bills, including unpaid bills. Live sessions and food are separate.</p>
+      <p id="sales-updated" class="sales-note" aria-live="polite"></p>
+    </section>
 
     <div id="stations" class="grid"></div>
 
@@ -267,14 +284,73 @@ async function checkLogin() {
   }
 }
 
+
+let dashboardRefreshTimer = null;
+let dashboardRefreshing = false;
+
+async function refreshDashboard() {
+  if (dashboardRefreshing) return;
+  dashboardRefreshing = true;
+  try {
+    await Promise.allSettled([loadStations(), loadDailySales()]);
+  } finally {
+    dashboardRefreshing = false;
+  }
+}
+
+function renderDailySales(row, error, now = Date.now()) {
+  const card = document.getElementById("sales-summary");
+  const heading = document.getElementById("sales-heading");
+  const total = document.getElementById("sales-total");
+  const details = document.getElementById("sales-details");
+  const updated = document.getElementById("sales-updated");
+  heading.textContent = "Today's Total Sales";
+  if (error || !row) {
+    total.textContent = "—";
+    card.classList.add("stale");
+    details.textContent = error ? "Sales total unavailable. Station status can still update." : "Waiting for the updated desktop app to send today's sales.";
+    updated.textContent = error ? "Complete the daily-sales table setup and sign in with the owner account." : "No daily summary received yet.";
+    return;
+  }
+  const amount = Number(row.total_sales);
+  const count = Number(row.session_count);
+  const timestamp = Date.parse(row.updated_at);
+  const endsAt = Date.parse(row.business_day_ends_at);
+  const valid = Number.isFinite(amount) && Number.isInteger(count) && count >= 0 &&
+    Number.isFinite(timestamp) && Number.isFinite(endsAt) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(row.business_date || "");
+  if (!valid) {
+    renderDailySales(null, true, now);
+    return;
+  }
+  const stale = now - timestamp > 120000 || now >= endsAt || timestamp > now + 120000;
+  heading.textContent = stale ? "Last Synced Sales" : "Today's Total Sales";
+  card.classList.toggle("stale", stale);
+  total.textContent = "Rs. " + amount.toLocaleString(undefined, {maximumFractionDigits: 2});
+  details.textContent = "Business day: " + row.business_date + " · " + count + " saved bill" + (count === 1 ? "" : "s");
+  updated.textContent = (stale ? "Waiting for a fresh desktop update. Last synced: " : "Updated: ") + new Date(timestamp).toLocaleString();
+}
+
+async function loadDailySales() {
+  try {
+    const {data, error} = await sb.from("daily_sales_summary")
+      .select("business_date,total_sales,session_count,business_day_ends_at,updated_at")
+      .eq("id", "current").limit(1);
+    renderDailySales(data && data[0], error);
+  } catch (error) {
+    renderDailySales(null, true);
+  }
+}
+
 async function showDashboard() {
 
   document.getElementById("login").style.display = "none";
   document.getElementById("dashboard").style.display = "block";
 
-  await loadStations();
+  await refreshDashboard();
 
-  setInterval(loadStations, 3000);
+  if (dashboardRefreshTimer) clearInterval(dashboardRefreshTimer);
+  dashboardRefreshTimer = setInterval(refreshDashboard, 3000);
 }
 
 async function loadStations() {
