@@ -192,6 +192,14 @@
     .sales-summary p { color: #aab6c6; margin: 6px 0; line-height: 1.5; }
     .sales-summary.stale { border-color: #718096; }
     .sales-summary .sales-note { font-size: 13px; }
+  [hidden] { display:none !important; }
+    select {padding:12px;margin:15px;background:#121821;color:white;border:1px solid #586170;border-radius:8px;font-size:16px;}
+    .report-card {min-height:75px;text-align:left;padding:20px;background:#192433;border:1px solid #465469;}
+    .report-card:focus-visible, summary:focus-visible {outline:3px solid #ff8a32;}
+    .metrics {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .metrics dt {color:#aab6c6;} .metrics dd {margin:0;text-align:right;overflow-wrap:anywhere;}
+    .report-note {color:#aab6c6;line-height:1.5;} details {margin:12px 0;} summary {cursor:pointer;line-height:1.6;}
+    pre {white-space:pre-wrap;overflow-wrap:anywhere;} .topbar {gap:10px;flex-wrap:wrap;}
   </style>
 </head>
 
@@ -205,10 +213,10 @@
 <div class="container">
 
   <div id="login" class="login">
-    <h2>Owner Login</h2>
+    <h2>MAX FLAME Login</h2>
 
-    <input id="email" type="email" placeholder="Supabase Email">
-    <input id="password" type="password" placeholder="Password">
+    <input id="email" type="text" placeholder="Account email" aria-label="Account email" autocomplete="username">
+    <input id="password" type="password" placeholder="Password" aria-label="Password" autocomplete="current-password">
 
     <button onclick="login()">LOGIN</button>
 
@@ -223,7 +231,8 @@
         <span class="live">● LIVE</span>
       </div>
 
-      <button onclick="logout()">Logout</button>
+      <button id="owner-reports" hidden onclick="openReports()">Reports</button>
+      <button onclick="reportLogout()">Logout</button>
     </div>
 
     <section id="sales-summary" class="sales-summary" aria-labelledby="sales-heading">
@@ -253,7 +262,8 @@ async function login() {
 
   document.getElementById("error").textContent = "";
 
-  const email = document.getElementById("email").value;
+  const supplied = document.getElementById("email").value.trim();
+  const email = supplied;
   const password = document.getElementById("password").value;
 
   const { error } = await sb.auth.signInWithPassword({
@@ -267,7 +277,8 @@ async function login() {
     return;
   }
 
-  showDashboard();
+  document.getElementById("password").value = "";
+  await enterAccount("Login");
 }
 
 async function logout() {
@@ -280,7 +291,7 @@ async function checkLogin() {
   const { data } = await sb.auth.getSession();
 
   if (data.session) {
-    showDashboard();
+    await enterAccount();
   }
 }
 
@@ -365,7 +376,7 @@ async function loadStations() {
   if (error) {
     area.innerHTML =
       '<div class="empty">Unable to load live data.<br>' +
-      error.message + '</div>';
+      safe(error.message) + '</div>';
     return;
   }
 
@@ -374,7 +385,7 @@ async function loadStations() {
   data.forEach(s => {
 
     const status = s.status || "Available";
-    const cssStatus = status.toLowerCase();
+    const cssStatus = ["Playing","Available","Paused"].includes(status) ? status.toLowerCase() : "unavailable";
 
     const card = document.createElement("div");
     card.className = "card " + cssStatus;
@@ -398,7 +409,7 @@ async function loadStations() {
 
       <div class="row">
         <span class="label">Controllers</span>
-        <span class="value">${s.controllers || 0}</span>
+        <span class="value">${Number(s.controllers) || 0}</span>
       </div>
 
       <div class="row">
@@ -456,8 +467,17 @@ function safe(value) {
   return div.innerHTML;
 }
 
-checkLogin();
+
 </script>
 
+<section id="reports" class="container" hidden>
+  <div class="topbar"><h2 id="report-title">Report Viewer</h2><button onclick="reportLogout()">Logout</button></div>
+  <button id="owner-return" hidden onclick="returnToOwner()">Back to owner dashboard</button>
+  <label for="report-period">Report period</label>
+  <select id="report-period"><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option></select>
+  <nav id="report-cards" class="grid" aria-label="Report sections"></nav>
+  <main id="report-content" aria-live="polite"></main>
+</section>
+<script src="viewer.js"></script>
 </body>
 </html>
