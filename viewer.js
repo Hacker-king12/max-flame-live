@@ -48,16 +48,17 @@ async function enterAccount(eventName = 'Session resumed') {
     }
   }
   document.getElementById('login').style.display = 'none';
-  document.getElementById('owner-reports').hidden = role !== 'owner';
+  document.getElementById('owner-reports').hidden = role !== 'viewer';
   if (role === 'viewer') openReports();
   else await showDashboard();
 }
 function openReports() {
-  if (!['owner','viewer'].includes(reportRole)) return;
+  if (reportRole !== 'viewer') return;
   clearInterval(dashboardRefreshTimer);
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('reports').hidden = false;
-  document.getElementById('owner-return').hidden = reportRole !== 'owner';
+  document.getElementById('owner-return').hidden = reportRole !== 'viewer';
+  document.getElementById('owner-return').textContent = 'View live stations';
   document.getElementById('report-title').textContent = reportRole === 'viewer' ? 'Report Viewer' : 'Reports';
   const cards = document.getElementById('report-cards'); cards.replaceChildren();
   for (const name of REPORT_SECTIONS) {
@@ -70,7 +71,7 @@ function openReports() {
   reportTimer = setInterval(() => { if(reportSection) loadReport(reportSection,false); },60000);
 }
 async function returnToOwner() {
-  if (reportRole !== 'owner') return;
+  if (reportRole !== 'viewer') return;
   reportGeneration++; clearInterval(reportTimer); reportSection = null;
   document.getElementById('reports').hidden = true;
   await showDashboard();
@@ -128,7 +129,7 @@ function eventCards(events,parent) {
   }
 }
 async function loadReport(section,scroll=true) {
-  if (!['owner','viewer'].includes(reportRole) || !REPORT_SECTIONS.includes(section)) return;
+  if (reportRole !== 'viewer' || !REPORT_SECTIONS.includes(section)) return;
   reportSection = section;
   const generation = ++reportGeneration;
   const period = document.getElementById('report-period').value;
