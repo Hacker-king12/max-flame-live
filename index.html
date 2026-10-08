@@ -200,6 +200,42 @@
     .metrics dt {color:#aab6c6;} .metrics dd {margin:0;text-align:right;overflow-wrap:anywhere;}
     .report-note {color:#aab6c6;line-height:1.5;} details {margin:12px 0;} summary {cursor:pointer;line-height:1.6;}
     pre {white-space:pre-wrap;overflow-wrap:anywhere;} .topbar {gap:10px;flex-wrap:wrap;}
+
+    .report-filters {display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin:20px 0;}
+    .report-filters label {display:flex;flex-direction:column;gap:7px;flex:1;min-width:140px;color:#c3ccda;}
+    .report-filters select {width:100%;margin:0;min-height:46px;}
+    .report-tools {display:flex;flex-wrap:wrap;gap:10px;margin:18px 0;}
+    .report-tools button {width:auto;margin:0;background:#263346;min-height:44px;}
+    .history-note {color:#b2bfd0;line-height:1.6;}
+    .report-card[aria-pressed="true"] {border-color:#ff8a32;background:#47250e;}
+    .grid {align-items:start;grid-template-columns:repeat(auto-fit,minmax(min(270px,100%),1fr));}
+    #report-cards {grid-template-columns:repeat(auto-fit,minmax(min(145px,100%),1fr));}
+    #report-cards button {margin:0;min-height:56px;padding:14px;}
+    .sales-chart {display:grid;gap:10px;margin:20px 0;}
+    .sales-bar {display:grid;grid-template-columns:92px minmax(20px,1fr) 95px;gap:10px;align-items:center;font-size:14px;}
+    .sales-bar-track {background:#253245;border-radius:4px;overflow:hidden;}
+    .sales-bar-fill {height:16px;background:#ff7b25;min-width:0;}
+    .sales-bar-amount {text-align:right;}
+    #report-content {overflow-wrap:anywhere;}
+    #report-content .grid .card {margin:0;}
+    #report-status {color:#ffb66b;}
+    @media(max-width:600px) {
+      header {padding:16px 12px;} header h1 {font-size:23px;}
+      .container {width:calc(100% - 24px);margin:18px auto;}
+      .login {margin:30px 0;max-width:none;}
+      .card {padding:14px;} .metrics {grid-template-columns:minmax(0,1fr) minmax(80px,0.7fr);font-size:15px;}
+      #report-cards {grid-template-columns:repeat(2,minmax(0,1fr));}
+      .report-tools button {flex:1;font-size:14px;}
+      .sales-bar {grid-template-columns:82px minmax(15px,1fr) 82px;gap:6px;font-size:12px;}
+      .row .value {overflow-wrap:anywhere;min-width:0;}
+    }
+    @media print {
+      body {background:white;color:black;} header,.container:not(#reports),.topbar button,
+      #owner-return,#report-cards,.report-tools,#history-status {display:none !important;}
+      #reports {width:100%;} .card {background:white;border:1px solid #aaa;break-inside:avoid;}
+      .metrics dt,.history-note,.report-note {color:#333;} select {color:black;background:white;}
+      .report-filters {display:none;} .sales-bar-track {border:1px solid #aaa;}
+    }
   </style>
 </head>
 
@@ -473,11 +509,26 @@ function safe(value) {
 <section id="reports" class="container" hidden>
   <div class="topbar"><h2 id="report-title">Report Viewer</h2><button onclick="reportLogout()">Logout</button></div>
   <button id="owner-return" hidden onclick="returnToOwner()">Back to owner dashboard</button>
-  <label for="report-period">Report period</label>
-  <select id="report-period"><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option></select>
+  <div class="report-filters">
+    <label for="report-period">Report period
+      <select id="report-period">
+        <option value="today">Today</option><option value="week">This week</option><option value="month">This month</option>
+        <option value="saved-month">Choose month</option><option value="saved-year">Choose year</option><option value="all">All saved records</option>
+      </select>
+    </label>
+    <label id="year-control" for="report-year" hidden>Year<select id="report-year"></select></label>
+    <label id="month-control" for="report-month" hidden>Month<select id="report-month"></select></label>
+  </div>
+  <p id="history-status" class="history-note" role="status"></p>
+  <div class="report-tools">
+    <button id="report-refresh" type="button">Refresh</button>
+    <button id="export-csv" type="button" disabled>Save CSV</button>
+    <button id="export-json" type="button" disabled>Save full report</button>
+    <button id="print-report" type="button" disabled>Print / PDF</button>
+  </div>
   <nav id="report-cards" class="grid" aria-label="Report sections"></nav>
   <main id="report-content" aria-live="polite"></main>
 </section>
-<script src="viewer.js"></script>
+<script src="viewer.js?v=monthly-446"></script>
 </body>
 </html>
